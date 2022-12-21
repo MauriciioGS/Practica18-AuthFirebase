@@ -2,6 +2,7 @@ package mx.mauriciogs.oauth
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View.VISIBLE
 import android.widget.Toast
 import android.widget.Toast.LENGTH_SHORT
@@ -9,9 +10,16 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.GraphRequest
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import mx.mauriciogs.oauth.databinding.ActivityMainBinding
@@ -20,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     
     private lateinit var binding: ActivityMainBinding
     private lateinit var activityResultLauncher: ActivityResultLauncher<Intent>
+    private var callbackManager = CallbackManager.Factory.create()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +103,51 @@ class MainActivity : AppCompatActivity() {
             val signIn: Intent = clienteGoogle.signInIntent
             activityResultLauncher.launch(signIn)
         }
+        //facebook
+        FirebaseAuth.getInstance().signOut();
+        LoginManager.getInstance().logOut();
+        binding.facebook.setReadPermissions(
+            listOf(
+                "public_profile",
+                "email",
+                "user_birthday",
+                "user_friends",
+                "user_gender"
+            )
+        )
+        binding.facebook.registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
+            override fun onSuccess(result: LoginResult) {
+                Log.e("TAG", "login")
+                val request = GraphRequest.newMeRequest(result.accessToken)
+                { _ /*object tipo Stirng*/, _/*response*/ ->
+                    val token = result.accessToken
+                    val credenciales = FacebookAuthProvider.getCredential(token.token)
+                    FirebaseAuth.getInstance().signInWithCredential(credenciales)
+                        .addOnCompleteListener {
+                            if (it.isSuccessful) {
+                                Toast.makeText(
+                                    binding.signin.context,
+                                    "Sign in successful",
+                                    Toast.LENGTH_SHORT
+                                )
+                                    .show()
+                                opciones(it.result?.user?.email ?: "", TipoProvedor.FACEBOOK)
+                            } else {
+                                alert()
+                            }
+                        }
+                }
+                val parameters = Bundle()
+                parameters.putString(
+                    "fields",
+                    "id,name,email,gender,birthday"
+                )
+                request.parameters = parameters
+                request.executeAsync()
+            }
+            override fun onCancel() {  }
+            override fun onError(error: FacebookException) {  }
+        })
     }
 
     private fun alert() {
@@ -143,5 +197,10 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        callbackManager.onActivityResult(resultCode, resultCode, data)
     }
 }

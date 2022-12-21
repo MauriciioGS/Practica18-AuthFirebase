@@ -9,4 +9,9 @@
     <string name="inscribirse">Inscribirse</string>
     <string name="cerrar_sesi_n">Cerrar Sesión</string>
     <string name="file_preferencia">dgtic.unam.autentifiacion.PREFERENCE_FILE_KEY</string>
+
+    <string name="facebook_app_id">1234</string>
+    <string name="fb_login_protocol_scheme">fb1234</string>
+    <string name="facebook_client_token">56789</string>
+
 </resources>

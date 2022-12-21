@@ -3,12 +3,18 @@ package mx.mauriciogs.oauth
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.widget.Toast
+import android.widget.Toast.LENGTH_SHORT
+import com.facebook.AccessToken
+import com.facebook.GraphRequest
+import com.facebook.GraphResponse
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.squareup.picasso.Picasso
 import mx.mauriciogs.oauth.databinding.ActivityOpcionesBinding
+import org.json.JSONObject
 
 enum class TipoProvedor {
     CORREO,
@@ -60,6 +66,24 @@ class OpcionesActivity : AppCompatActivity() {
             val data = GoogleSignIn.getLastSignedInAccount(this)
             if (data != null) {
                 Picasso.get().load(data.photoUrl).into(binding.img)
+            }
+        } else if (provedor == TipoProvedor.FACEBOOK.name) {
+            val accessToken = AccessToken.getCurrentAccessToken()
+            Toast.makeText(this, "FACEBOOK", LENGTH_SHORT).show()
+            if (accessToken != null) {
+                val request: GraphRequest =
+                    GraphRequest.newMeRequest(accessToken, GraphRequest.GraphJSONObjectCallback(
+                        { obj: JSONObject, response: GraphResponse ->
+                            val correo = obj.getString("email")
+                            binding.mail.text = correo
+                            val url = obj.getJSONObject("picture").getJSONObject("data")
+                                .getString("url")
+                            Picasso.get().load(url).into(binding.img)
+                        } as (JSONObject?, GraphResponse?) -> Unit))
+                val paramters = Bundle()
+                paramters.putString("fields", "id,name,link,email,picture.type(large)")
+                request.parameters = paramters
+                request.executeAsync()
             }
         }
 
